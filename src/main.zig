@@ -1,19 +1,55 @@
 const std = @import("std");
 const colors = @import("cli/colors.zig");
 
+pub fn getNumber() !f64 {
+    var buf: [16]u8 = undefined;
+    const stdin = std.io.getStdIn().reader();
+
+    try colors.stdoutPrint("&aEnter a number: ", .{});
+
+    while (true) {
+        const a = stdin.readUntilDelimiter(&buf, '\n') catch |err| switch (err) {
+            error.StreamTooLong => {
+                try colors.stdoutPrint("&cYo yo shit is too long!\n", .{});
+
+                // we need to read whole in buffer
+                var writer = std.io.countingWriter(std.io.null_writer);
+                stdin.streamUntilDelimiter(writer.writer().any(), '\n', null) catch unreachable;
+
+                continue;
+            },
+            else => {
+                std.debug.panic("err: {}", .{err});
+                continue;
+            },
+        };
+
+        return std.fmt.parseFloat(f64, a) catch {
+            try colors.stdoutPrint("&cit aint a number!\n", .{});
+            continue;
+        };
+    }
+}
+
+pub fn getFunction() ![2]f64 {
+    var out: [2]f64 = undefined;
+    out[0] = 1.29;
+    out[1] = 0.5;
+
+    _ = try getNumber();
+
+    return out;
+}
+
 pub fn main() !void {
-    std.debug.print("&0 = " ++ colors.comptimeTranslate("&0ABC") ++ "   &1 = " ++ colors.comptimeTranslate("&1AB\n"), .{});
-    std.debug.print("&2 = " ++ colors.comptimeTranslate("&2ABC") ++ "   &3 = " ++ colors.comptimeTranslate("&3AB\n"), .{});
-    std.debug.print("&4 = " ++ colors.comptimeTranslate("&4ABC") ++ "   &5 = " ++ colors.comptimeTranslate("&5AB\n"), .{});
-    std.debug.print("&6 = " ++ colors.comptimeTranslate("&6ABC") ++ "   &7 = " ++ colors.comptimeTranslate("&7AB\n"), .{});
-    std.debug.print("&8 = " ++ colors.comptimeTranslate("&8ABC") ++ "   &9 = " ++ colors.comptimeTranslate("&9AB\n"), .{});
-    std.debug.print("&a = " ++ colors.comptimeTranslate("&aABC") ++ "   &b = " ++ colors.comptimeTranslate("&bAB\n"), .{});
-    std.debug.print("&c = " ++ colors.comptimeTranslate("&cABC") ++ "   &d = " ++ colors.comptimeTranslate("&dAB\n"), .{});
-    std.debug.print("&e = " ++ colors.comptimeTranslate("&eABC") ++ "   &f = " ++ colors.comptimeTranslate("&fAB\n"), .{});
-    std.debug.print("&k = " ++ colors.comptimeTranslate("&kABC") ++ "   &l = " ++ colors.comptimeTranslate("&lAB\n"), .{});
-    std.debug.print("&m = " ++ colors.comptimeTranslate("&mABC") ++ "   &n = " ++ colors.comptimeTranslate("&nAB\n"), .{});
-    std.debug.print("&o = " ++ colors.comptimeTranslate("&oABC") ++ "   &r = " ++ colors.comptimeTranslate("&rAB\n"), .{});
-    std.debug.print(colors.comptimeTranslate("&o&k&a&l&m&nHello World!\n"), .{});
+    const f = try getFunction();
+    try colors.stdoutPrint("&af(x) = {d}x + {d}\n", .{ f[0], f[1] });
+
+    //const slope = (y1.? - y2.?) / (x1.? - x2.?);
+    //const c = y1.? - slope * x1.?;
+
+    //std.debug.print(colors.comptimeTranslate("f(x) = {d}x + {d}\n"), .{ slope, c });
+
     //while (true) {
     //defer frame += 1;
     //try stdout.print("\x1B[2F\x1B[G\x1B[2Kcount is:\n{}\n", .{frame});

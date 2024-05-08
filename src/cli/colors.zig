@@ -70,7 +70,7 @@ pub fn translate(writer: anytype, comptime str: []const u8) !void {
             i += 1;
             continue;
         }
-        try writer.writeByte(str[i]);
+        try writer.writeByte(str[i]); // not cool to write a byte do while loop till reaching &
     }
 
     if (!last_reset) {
@@ -92,4 +92,9 @@ pub fn comptimeTranslate(comptime str: []const u8) *const [count(str):0]u8 {
         const final = buf;
         return &final;
     }
+}
+
+pub fn stdoutPrint(comptime fmt: []const u8, args: anytype) !void {
+    const stdout = std.io.getStdOut().writer();
+    try stdout.print(comptimeTranslate(fmt), args);
 }

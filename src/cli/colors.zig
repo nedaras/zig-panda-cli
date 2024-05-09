@@ -23,6 +23,23 @@ pub const underline = "\x1b[4m";
 pub const italic = "\x1b[3m";
 pub const reset = "\x1b[0m";
 
+pub const black_bg = "\x1b[40m";
+pub const dark_blue_bg = "\x1b[44m";
+pub const dark_green_bg = "\x1b[42m";
+pub const dark_aqua_bg = "\x1b[46m";
+pub const dark_red_bg = "\x1b[41m";
+pub const dark_purple_bg = "\x1b[45m";
+pub const gold_bg = "\x1b[43m";
+pub const gray_bg = "\x1b[47m";
+pub const dark_gray_bg = "\x1b[100m";
+pub const blue_bg = "\x1b[104m";
+pub const green_bg = "\x1b[102m";
+pub const aqua_bg = "\x1b[106m";
+pub const red_bg = "\x1b[101m";
+pub const light_purple_bg = "\x1b[105m";
+pub const yellow_bg = "\x1b[103m";
+pub const white_bg = "\x1b[107m";
+
 pub fn count(comptime str: []const u8) usize {
     var counting_writer = std.io.countingWriter(std.io.null_writer);
     translate(counting_writer.writer().any(), str) catch unreachable;
@@ -30,49 +47,41 @@ pub fn count(comptime str: []const u8) usize {
 }
 
 pub fn translate(writer: anytype, comptime str: []const u8) !void {
-    // TODO: check if its color code after color code thn just add ;
     @setEvalBranchQuota(2000000);
     comptime var i = 0;
     comptime var last_reset = false;
-    inline while (i < str.len) : (i += 1) {
-        if (str[i] == '&') {
-            if (i + 1 >= str.len) @compileError("missing color code");
-
-            last_reset = false;
-            switch (str[i + 1]) {
-                '0' => try writer.writeAll(black),
-                '1' => try writer.writeAll(dark_blue),
-                '2' => try writer.writeAll(dark_green),
-                '3' => try writer.writeAll(dark_aqua),
-                '4' => try writer.writeAll(dark_red),
-                '5' => try writer.writeAll(dark_purple),
-                '6' => try writer.writeAll(gold),
-                '7' => try writer.writeAll(gray),
-                '8' => try writer.writeAll(dark_gray),
-                '9' => try writer.writeAll(blue),
-                'a' => try writer.writeAll(green),
-                'b' => try writer.writeAll(aqua),
-                'c' => try writer.writeAll(red),
-                'd' => try writer.writeAll(light_purple),
-                'e' => try writer.writeAll(yellow),
-                'f' => try writer.writeAll(white),
-                'k' => try writer.writeAll(blink),
-                'l' => try writer.writeAll(bold),
-                'm' => try writer.writeAll(strikethrough),
-                'n' => try writer.writeAll(underline),
-                'o' => try writer.writeAll(italic),
-                'r' => {
-                    try writer.writeAll(reset);
-                    last_reset = true;
-                },
-                else => @compileError(std.fmt.comptimePrint("no color with code '{c}'", .{str[i + 1]})),
+    inline while (i < str.len) {
+        const start_index = i;
+        inline while (i < str.len) : (i += 1) {
+            switch (str[i]) {
+                '&' => break,
+                else => {},
             }
-            i += 1;
-            continue;
         }
-        try writer.writeByte(str[i]); // not cool to write a byte do while loop till reaching &
-    }
+        const end_index = i;
 
+        if (start_index != end_index) {
+            try writer.writeAll(str[start_index..end_index]);
+        }
+
+        if (i >= str.len) break;
+
+        last_reset = false;
+        i += 1;
+
+        const color_begin = i;
+        inline while (i < str.len) : (i += 1) {
+            if (str[i] < '0' or str[i] > '9') break;
+        }
+        const color_end = i;
+
+        if (color_begin == color_end) {
+            @compileError("missing or invalid color code");
+        }
+
+        try writer.print("\x1B[{s}m", .{str[color_begin..color_end]});
+        last_reset = std.mem.eql(u8, str[color_begin..color_end], "0");
+    }
     if (!last_reset) {
         try writer.writeAll(reset);
     }

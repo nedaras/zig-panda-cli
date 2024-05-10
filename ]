@@ -20,14 +20,9 @@ pub fn main() !void {
 
     try bw.flush();
 
-    // only on linux now idk about mac
-    var p1 = std.ChildProcess.init(&.{ "stty", "-F", "/dev/tty", "cbreak", "min", "1" }, std.heap.page_allocator);
-    try p1.spawn();
-    _ = try p1.wait();
-
-    var p2 = std.ChildProcess.init(&.{ "stty", "-F", "/dev/tty", "-echo" }, std.heap.page_allocator);
-    try p2.spawn();
-    _ = try p2.wait();
+    const process = std.ChildProcess.init(&.{"clear"}, std.heap.page_allocator);
+    try process.spawn();
+    _ = try process.wait();
 
     while (true) {
         std.debug.print("aa:\n", .{});

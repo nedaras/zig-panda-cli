@@ -80,7 +80,7 @@ pub fn translate(writer: anytype, comptime str: []const u8) !void {
         }
 
         try writer.print("\x1B[{s}m", .{str[color_begin..color_end]});
-        last_reset = std.mem.eql(u8, str[color_begin..color_end], "0");
+        last_reset = comptime std.mem.eql(u8, str[color_begin..color_end], "0");
     }
     if (!last_reset) {
         try writer.writeAll(reset);

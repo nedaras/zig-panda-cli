@@ -1,6 +1,11 @@
 const std = @import("std");
 const color = @import("cli/colors.zig");
 const cursor = @import("cli/cursor.zig");
+const Regex = @import("Regex.zig");
+
+fn isToken(c: u8) bool {
+    return c > 31 and c < 127;
+}
 
 fn stty() !void {
     // only on linux now idk about mac
@@ -11,6 +16,15 @@ fn stty() !void {
     var p2 = std.ChildProcess.init(&.{ "stty", "-F", "/dev/tty", "-echo" }, std.heap.page_allocator);
     try p2.spawn();
     _ = try p2.wait();
+}
+
+// TODO: add windows
+fn getColumns() !u16 {
+    var win: std.os.linux.winsize = undefined;
+    if (std.os.linux.ioctl(std.os.linux.STDOUT_FILENO, std.os.linux.T.IOCGWINSZ, @intFromPtr(&win)) == -1) {
+        return error.GetWinSize;
+    }
+    return win.ws_col;
 }
 
 pub fn main() !void {
@@ -24,6 +38,9 @@ pub fn main() !void {
 
     const allocator = gpa.allocator();
 
+    var reg = try Regex.init(allocator, "bob");
+    defer reg.deinit();
+
     try stty();
 
     const stdout_file = std.io.getStdOut();
@@ -33,26 +50,36 @@ pub fn main() !void {
     const stdout = bw.writer();
 
     //try stdout.writeAll("\x1B[?25l");
-    try color.translate(stdout, "&42&30 panda &0  Hello world.\n\n");
-    try color.translate(stdout, "  &45&97 #1 &0  whats poping?\n        &2write a number" ++ cursor.save ++ "  &91▶ Directory is not empty!" ++ cursor.restore);
+    try color.translate(stdout, "&42&30 panda &0 Panda 3000 launched.\n\n");
+    try color.translate(stdout, "  &45&97 name &0  What is your name?\n"); //        &2write a number" ++ cursor.save ++ "  &91▶ Directory is not empty!" ++ cursor.restore);
 
-    try bw.flush();
-
-    var placeholder = std.ArrayList(u8).init(allocator);
-    defer placeholder.deinit();
+    var input = std.ArrayList(u8).init(allocator);
+    defer input.deinit();
 
     while (true) {
-        std.debug.print("\x1B[2K\x1B[1Gplaceholder: {s}", .{placeholder.items});
-        var buf: [3]u8 = undefined;
-        const size = try stdin_file.read(&buf);
-        const key = buf[0..size];
+        const spaces = "        ";
+        const clear = "\x1B[2K\x1B[1G";
+        const err = cursor.save ++ "  &91▶ Names can not be lowercase!" ++ cursor.restore;
 
-        if (key.len == 1 and key[0] == '\x7F' and placeholder.items.len > 0) { // handle x arrow keys
-            _ = placeholder.pop();
-            continue;
+        if (input.items.len > 0) {
+            try stdout.print(color.comptimeTranslate(clear ++ spaces ++ "  {s}" ++ err), .{input.items});
+        } else {
+            try color.translate(stdout, clear ++ spaces ++ "  &2here!");
         }
-        if (key.len == 1) { // and only accept writable asci chars so
-            try placeholder.appendSlice(key);
+
+        try bw.flush();
+        const c = try stdin_file.reader().readByte();
+
+        switch (c) {
+            '\x1B' => {
+                // idk what todo here
+            },
+            '\x7F' => if (input.items.len > 0) {
+                _ = input.pop();
+            },
+            else => if (isToken(c)) {
+                try input.append(c);
+            },
         }
     }
 }

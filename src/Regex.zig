@@ -12,17 +12,18 @@ const Self = @This();
 allocator: Allocator,
 regex: *c.regex_t,
 
-// TODO: remove the null terminated strings wtf
+// TODO: remove the null terminated strings wtf and make support for windows and make string format /{reg}/gI...
 pub fn init(allocator: Allocator, regex: [:0]const u8) !Self {
     const slice = try allocator.alignedAlloc(u8, REGEX_T_ALIGNOF, REGEX_T_SIZEOF);
-    const reg: *c.regex_t = @ptrCast(slice.ptr);
+    errdefer allocator.free(slice[0..REGEX_T_SIZEOF]);
 
-    if (c.regcomp(reg, regex, 0) != 0) {
+    const reg: *c.regex_t = @ptrCast(slice.ptr);
+    if (c.regcomp(reg, regex, c.REG_EXTENDED) != 0) {
         return error.InvalidRegex;
     }
 
-    std.debug.print("reg: {}\n", .{c.regexec(reg, "as use bobas!!", 0, 0, 0)});
-    std.debug.print("reg: {}\n", .{c.regexec(reg, "false", 0, 0, 0)});
+    std.debug.print("reg: {}\n", .{c.regexec(reg, "\x1B[36m", 0, 0, 0)});
+    //std.debug.print("reg: {}\n", .{c.regexec(reg, "false", 0, 0, 0)});
 
     return .{
         .allocator = allocator,

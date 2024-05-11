@@ -38,7 +38,8 @@ pub fn main() !void {
 
     const allocator = gpa.allocator();
 
-    var reg = try Regex.init(allocator, "bob");
+    const pattern = "\x1b\\[[0-9;]*[mGKHF]";
+    var reg = try Regex.init(allocator, pattern);
     defer reg.deinit();
 
     try stty();

@@ -1,4 +1,8 @@
 const std = @import("std");
+const Regex = @import("../Regex.zig");
+const cursor = @import("./cursor.zig");
+
+const Allocator = std.mem.Allocator;
 
 pub const black = "\x1b[30m";
 pub const dark_blue = "\x1b[34m";
@@ -106,4 +110,58 @@ pub fn comptimeTranslate(comptime str: []const u8) *const [count(str):0]u8 {
 pub fn stdoutPrint(comptime fmt: []const u8, args: anytype) !void {
     const stdout = std.io.getStdOut().writer();
     try stdout.print(comptimeTranslate(fmt), args);
+}
+
+pub fn strip(allocator: Allocator, str: []const u8) ![]u8 {
+    var regex = try Regex.init(allocator, "(\x1b\\[[0-9;]*[mGKHF])|(\x1b[0-9])");
+    defer regex.deinit();
+
+    var input = try std.ArrayList(u8).initCapacity(allocator, str.len);
+    errdefer input.deinit();
+
+    try input.appendSlice(str);
+    while (try regex.match(input.items)) |match| {
+        try input.replaceRange(match.start, match.end - match.start, "");
+    }
+
+    return try input.toOwnedSlice();
+}
+
+test "strip" {
+    const a = std.testing.allocator;
+    {
+        const input = red ++ "test1" ++ reset;
+        const out = try strip(a, input);
+        defer a.free(out);
+
+        try std.testing.expectEqualSlices(u8, "test1", out);
+    }
+    {
+        const input = red ++ underline ++ bold ++ "test2" ++ reset;
+        const out = try strip(a, input);
+        defer a.free(out);
+
+        try std.testing.expectEqualSlices(u8, "test2", out);
+    }
+    {
+        const input = red ++ underline ++ bold ++ "test" ++ dark_blue_bg ++ strikethrough ++ "\n3" ++ reset;
+        const out = try strip(a, input);
+        defer a.free(out);
+
+        try std.testing.expectEqualSlices(u8, "test\n3", out);
+    }
+    {
+        const input = red ++ underline ++ bold ++ "\x1b[2Ktest" ++ dark_blue_bg ++ strikethrough ++ "\x1b[1G\n4" ++ reset;
+        const out = try strip(a, input);
+        defer a.free(out);
+
+        try std.testing.expectEqualSlices(u8, "test\n4", out);
+    }
+    {
+        const input = red ++ underline ++ cursor.save ++ bold ++ "\x1b[2Ktest" ++ dark_blue_bg ++ cursor.restore ++ strikethrough ++ "\x1b[1G\n5" ++ reset;
+        const out = try strip(a, input);
+        defer a.free(out);
+
+        try std.testing.expectEqualSlices(u8, "test\n5", out);
+    }
 }

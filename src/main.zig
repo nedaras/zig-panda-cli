@@ -1,6 +1,6 @@
 const std = @import("std");
-const color = @import("cli/colors.zig");
 const cursor = @import("cli/cursor.zig");
+const color = @import("cli/colors.zig");
 const Regex = @import("Regex.zig");
 
 fn isToken(c: u8) bool {
@@ -38,9 +38,11 @@ pub fn main() !void {
 
     const allocator = gpa.allocator();
 
-    const pattern = "\x1b\\[[0-9;]*[mGKHF]";
-    var reg = try Regex.init(allocator, pattern);
-    defer reg.deinit();
+    // todo write tests for this strip thing
+    const out = try color.strip(allocator, comptime color.comptimeTranslate("hell&45oooo"));
+    defer allocator.free(out);
+
+    std.debug.print("strip: {s}\n", .{out});
 
     try stty();
 
@@ -83,4 +85,8 @@ pub fn main() !void {
             },
         }
     }
+}
+
+test {
+    std.testing.refAllDecls(@This());
 }

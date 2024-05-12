@@ -24,6 +24,7 @@ pub const blink = "\x1b[5m";
 pub const bold = "\x1b[1m";
 pub const strikethrough = "\x1b[9m";
 pub const underline = "\x1b[4m";
+pub const dim = "\x1b[2m";
 pub const italic = "\x1b[3m";
 pub const reset = "\x1b[0m";
 
@@ -53,7 +54,6 @@ pub fn count(comptime str: []const u8) usize {
 pub fn translate(writer: anytype, comptime str: []const u8) !void {
     @setEvalBranchQuota(2000000);
     comptime var i = 0;
-    comptime var last_reset = false;
     inline while (i < str.len) {
         const start_index = i;
         inline while (i < str.len) : (i += 1) {
@@ -70,7 +70,6 @@ pub fn translate(writer: anytype, comptime str: []const u8) !void {
 
         if (i >= str.len) break;
 
-        last_reset = false;
         i += 1;
 
         const color_begin = i;
@@ -84,10 +83,6 @@ pub fn translate(writer: anytype, comptime str: []const u8) !void {
         }
 
         try writer.print("\x1B[{s}m", .{str[color_begin..color_end]});
-        last_reset = comptime std.mem.eql(u8, str[color_begin..color_end], "0");
-    }
-    if (!last_reset) {
-        try writer.writeAll(reset);
     }
 }
 

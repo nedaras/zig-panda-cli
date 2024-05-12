@@ -113,7 +113,7 @@ pub fn stdoutPrint(comptime fmt: []const u8, args: anytype) !void {
 }
 
 pub fn strip(allocator: Allocator, str: []const u8) ![]u8 {
-    var regex = try Regex.init(allocator, "(\x1b\\[[0-9;]*[mGKHF])|(\x1b[0-9])");
+    var regex = try Regex.init(allocator, "(\x1b\\[\\??[0-9;]*[mlhGKHF])|(\x1b[0-9])");
     defer regex.deinit();
 
     var input = try std.ArrayList(u8).initCapacity(allocator, str.len);
@@ -163,5 +163,13 @@ test "strip" {
         defer a.free(out);
 
         try std.testing.expectEqualSlices(u8, "test\n5", out);
+    }
+
+    {
+        const input = cursor.hide ++ red ++ underline ++ cursor.save ++ bold ++ "\x1b[2Ktest" ++ dark_blue_bg ++ cursor.restore ++ strikethrough ++ "\x1b[1G\n6" ++ reset ++ cursor.show;
+        const out = try strip(a, input);
+        defer a.free(out);
+
+        try std.testing.expectEqualSlices(u8, "test\n6", out);
     }
 }

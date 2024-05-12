@@ -28,21 +28,10 @@ fn getColumns() !u16 {
 }
 
 pub fn main() !void {
-
-    //try color.stdoutPrint("&42&30 panda &0  Hello world.\n\n", .{});
-    //try color.stdoutPrint("  &45&97 #1 &0  &91▶ Directory is not empty!", .{});
-    //try color.stdoutPrint("\x1B[2K\x1B[1Ghello world" ++ cursor.save ++ "  &91Oh my gad error" ++ cursor.restore, .{});
-
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
 
     const allocator = gpa.allocator();
-
-    // todo write tests for this strip thing
-    const out = try color.strip(allocator, comptime color.comptimeTranslate("hell&45oooo"));
-    defer allocator.free(out);
-
-    std.debug.print("strip: {s}\n", .{out});
 
     try stty();
 
@@ -60,22 +49,16 @@ pub fn main() !void {
     defer input.deinit();
 
     while (true) {
-        const spaces = "        ";
-        const clear = "\x1B[2K\x1B[1G";
-        const err = cursor.save ++ "  &91▶ Names can not be lowercase!" ++ cursor.restore;
-
-        if (input.items.len > 0) {
-            try stdout.print(color.comptimeTranslate(clear ++ spaces ++ "  {s}" ++ err), .{input.items});
-        } else {
-            try color.translate(stdout, clear ++ spaces ++ "  &2here!");
-        }
-
+        const prefix = "          ";
+        try stdout.print("\x1B[1G" ++ prefix ++ "{s}", .{input.items});
         try bw.flush();
+
         const c = try stdin_file.reader().readByte();
+        const i = (input.items.len + prefix.len - 1) / try getColumns();
 
         switch (c) {
             '\x1B' => {
-                // idk what todo here
+                // idk what todo here prob if we get in stdin more then one char we will return.
             },
             '\x7F' => if (input.items.len > 0) {
                 _ = input.pop();
@@ -84,6 +67,8 @@ pub fn main() !void {
                 try input.append(c);
             },
         }
+        try stdout.writeAll("\x1B[2K");
+        if (i > 0) try stdout.print("\x1B[{d}A", .{i});
     }
 }
 

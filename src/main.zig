@@ -2,20 +2,10 @@ const std = @import("std");
 const cursor = @import("cli/cursor.zig");
 const color = @import("cli/colors.zig");
 const Regex = @import("Regex.zig");
+const Stty = @import("Stty.zig");
 
 fn isToken(c: u8) bool {
     return c > 31 and c < 127;
-}
-
-fn stty() !void {
-    // only on linux now idk about mac
-    var p1 = std.ChildProcess.init(&.{ "stty", "-F", "/dev/tty", "cbreak", "min", "1" }, std.heap.page_allocator);
-    try p1.spawn();
-    _ = try p1.wait();
-
-    var p2 = std.ChildProcess.init(&.{ "stty", "-F", "/dev/tty", "-echo" }, std.heap.page_allocator);
-    try p2.spawn();
-    _ = try p2.wait();
 }
 
 // TODO: add windows
@@ -97,7 +87,10 @@ pub fn main() !void {
     const allocator = gpa.allocator();
 
     //try stdout.writeAll("\x1B[?25l");
-    try stty();
+    //try stty();
+
+    const stty = try Stty.init(allocator);
+    defer stty.deinit();
 
     const stdout_file = std.io.getStdOut();
 

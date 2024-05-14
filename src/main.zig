@@ -18,13 +18,12 @@ fn getColumns() !u16 {
 }
 
 const PromtOptions = struct {
-    name: []const u8,
     message: []const u8,
     placeholder: ?[]const u8 = null,
     verify: fn ([]const u8) ?[]const u8,
 };
 
-fn promt(allocator: std.mem.Allocator, options: PromtOptions) ![]u8 {
+fn promt(allocator: std.mem.Allocator, oName: []const u8, options: PromtOptions) ![]u8 {
     const stdout_file = std.io.getStdOut();
     const stdin_file = std.io.getStdIn();
 
@@ -34,9 +33,9 @@ fn promt(allocator: std.mem.Allocator, options: PromtOptions) ![]u8 {
     const name = comptime color.comptimeTranslate("   &45&97 ");
     const reset = comptime color.comptimeTranslate(" &0  ");
     // TODO: add comptime strip
-    const prefix_len = 3 + 1 + options.name.len + 1 + 2;
+    const prefix_len = 3 + 1 + oName.len + 1 + 2;
 
-    try stdout.print("\n" ++ name ++ "{s}" ++ reset ++ "{s}\n", .{ options.name, options.message });
+    try stdout.print("\n" ++ name ++ "{s}" ++ reset ++ "{s}\n", .{ oName, options.message });
 
     var input = std.ArrayList(u8).init(allocator);
     defer input.deinit();
@@ -71,6 +70,7 @@ fn promt(allocator: std.mem.Allocator, options: PromtOptions) ![]u8 {
                 _ = input.pop();
             },
             '\n' => if (!err) {
+                // todo dim result after enter
                 try stdout.writeByte('\n');
                 try bw.flush();
                 return input.toOwnedSlice();
@@ -88,10 +88,37 @@ fn promt(allocator: std.mem.Allocator, options: PromtOptions) ![]u8 {
 
 // never return allocated strings
 // mb add cleanup function or with typeinfo check if string needs to be freeded.
-fn verify(input: []const u8) ?[]const u8 {
+fn verifyFloat(input: []const u8) ?[]const u8 {
     if (input.len == 0) return "";
     _ = std.fmt.parseFloat(f64, input) catch return "Weight has to be a number!";
     return null;
+}
+
+fn verifyInteger(input: []const u8) ?[]const u8 {
+    // todo: make it more logical like throw error if negatice number
+    if (input.len == 0) return "";
+    _ = std.fmt.parseInt(u32, input, 10) catch return "Weight has to be a fixed number!";
+    return null;
+}
+
+fn getWeight(allocator: std.mem.Allocator, user: usize) !f64 {
+    const aa = try std.fmt.allocPrint(allocator, "{d}", .{user});
+    defer allocator.free(aa);
+
+    const out = try promt(allocator, aa, .{ .message = "what is your haul's weight?", .verify = verifyFloat });
+    defer allocator.free(out);
+    return std.fmt.parseFloat(f64, out) catch unreachable;
+}
+
+fn getUsers(allocator: std.mem.Allocator) !void {
+    const out = try promt(allocator, "users", .{ .message = "How many peaple are contributing?", .verify = verifyInteger });
+    defer allocator.free(out);
+
+    const users = std.fmt.parseUnsigned(u32, out, 10) catch unreachable;
+
+    for (0..users) |user| {
+        _ = try getWeight(allocator, user + 1);
+    }
 }
 
 pub fn main() !void {
@@ -112,11 +139,7 @@ pub fn main() !void {
     try color.translate(stdout, "\n&42&30 panda &0 Calculator launched.\n");
     try bw.flush();
 
-    const out = try promt(allocator, .{ .name = "kg", .message = "What is your haul's weight?", .verify = verify });
-    defer allocator.free(out);
-
-    const weight = std.fmt.parseFloat(f64, out) catch unreachable;
-    std.debug.print("ya weight is: {d}kg\n", .{weight});
+    try getUsers(allocator);
 }
 
 test {

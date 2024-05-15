@@ -109,7 +109,13 @@ fn getWeight(allocator: std.mem.Allocator, user: u32) !f64 {
     const name = try std.fmt.allocPrint(allocator, "#{d}", .{user});
     defer allocator.free(name);
 
-    const out = try promt(allocator, .{ .name = name, .message = "what is your haul's weight?", .verify = verifyFloat });
+    const out = try promt(allocator, .{ .name = name, .message = "say da weigth?", .verify = verifyFloat });
+    defer allocator.free(out);
+    return std.fmt.parseFloat(f64, out) catch unreachable;
+}
+
+fn getShippingPrice(allocator: std.mem.Allocator) !f64 {
+    const out = try promt(allocator, .{ .name = "eur", .message = "what is your haul's shipping price?", .verify = verifyFloat });
     defer allocator.free(out);
     return std.fmt.parseFloat(f64, out) catch unreachable;
 }
@@ -146,7 +152,7 @@ pub fn main() !void {
     const stdout = bw.writer();
 
     // hoobuy is a scam btw
-    try color.translate(stdout, "\n&42&30 hoobuy &0 Calculator launched.\n");
+    try color.translate(stdout, "\n&42&30 hoobuy &0  Calculator launched.\n");
     try bw.flush();
 
     const tuple = try getUsers(allocator);
@@ -155,9 +161,17 @@ pub fn main() !void {
     const total_weigth = tuple[0];
     const users_weigths = tuple[1];
 
-    _ = users_weigths;
+    try stdout.print(color.comptimeTranslate("\n&42&30 hoobuy &0  Total hauls weigth is {d:.3}kg.\n"), .{total_weigth});
+    try bw.flush();
 
-    try stdout.print(color.comptimeTranslate("\n&42&30 panda &0 Total hauls weigth is {d}kg.\n"), .{total_weigth});
+    const price = try getShippingPrice(allocator);
+    const ratio = price / total_weigth;
+
+    try color.translate(stdout, "\n&42&30 hoobuy &0  Done...\n\n");
+    for (0.., users_weigths) |i, user| {
+        try stdout.print(color.comptimeTranslate("          &32●&0 User #{d} fee - {d:.2}$.\n"), .{ i, user * ratio });
+    }
+    try stdout.writeByte('\n');
     try bw.flush();
 }
 

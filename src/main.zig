@@ -18,24 +18,27 @@ fn getColumns() !u16 {
 }
 
 const PromtOptions = struct {
+    name: []const u8,
     message: []const u8,
     placeholder: ?[]const u8 = null,
-    verify: fn ([]const u8) ?[]const u8,
+    verify: *const fn (input: []const u8) ?[]const u8,
 };
 
-fn promt(allocator: std.mem.Allocator, oName: []const u8, options: PromtOptions) ![]u8 {
+fn promt(allocator: std.mem.Allocator, options: PromtOptions) ![]u8 {
     const stdout_file = std.io.getStdOut();
     const stdin_file = std.io.getStdIn();
 
     var bw = std.io.bufferedWriter(stdout_file.writer());
     const stdout = bw.writer();
 
-    const name = comptime color.comptimeTranslate("   &45&97 ");
+    const name = comptime color.comptimeTranslate("&45&97 ");
     const reset = comptime color.comptimeTranslate(" &0  ");
     // TODO: add comptime strip
-    const prefix_len = 3 + 1 + oName.len + 1 + 2;
+    const prefix_len = (6 - options.name.len) + 1 + options.name.len + 1 + 2;
 
-    try stdout.print("\n" ++ name ++ "{s}" ++ reset ++ "{s}\n", .{ oName, options.message });
+    try stdout.writeByte('\n');
+    try stdout.writeByteNTimes(' ', 6 - options.name.len);
+    try stdout.print(name ++ "{s}" ++ reset ++ "{s}\n", .{ options.name, options.message });
 
     var input = std.ArrayList(u8).init(allocator);
     defer input.deinit();
@@ -101,24 +104,30 @@ fn verifyInteger(input: []const u8) ?[]const u8 {
     return null;
 }
 
-fn getWeight(allocator: std.mem.Allocator, user: usize) !f64 {
-    const aa = try std.fmt.allocPrint(allocator, "{d}", .{user});
-    defer allocator.free(aa);
+// TODO: make make it in grams
+fn getWeight(allocator: std.mem.Allocator, user: u32) !f64 {
+    const name = try std.fmt.allocPrint(allocator, "#{d}", .{user});
+    defer allocator.free(name);
 
-    const out = try promt(allocator, aa, .{ .message = "what is your haul's weight?", .verify = verifyFloat });
+    const out = try promt(allocator, .{ .name = name, .message = "what is your haul's weight?", .verify = verifyFloat });
     defer allocator.free(out);
     return std.fmt.parseFloat(f64, out) catch unreachable;
 }
 
-fn getUsers(allocator: std.mem.Allocator) !void {
-    const out = try promt(allocator, "users", .{ .message = "How many peaple are contributing?", .verify = verifyInteger });
+fn getUsers(allocator: std.mem.Allocator) !std.meta.Tuple(&.{ f64, []f64 }) {
+    const out = try promt(allocator, .{ .name = "users", .message = "How many peaple are contributing?", .verify = verifyInteger });
     defer allocator.free(out);
 
-    const users = std.fmt.parseUnsigned(u32, out, 10) catch unreachable;
+    const users = try allocator.alloc(f64, std.fmt.parseUnsigned(u32, out, 10) catch unreachable);
+    var total_weigth: f64 = 0;
 
-    for (0..users) |user| {
-        _ = try getWeight(allocator, user + 1);
+    for (0..users.len) |user| {
+        const weigth = try getWeight(allocator, @intCast(user + 1));
+
+        users[user] = weigth;
+        total_weigth += weigth;
     }
+    return .{ total_weigth, users };
 }
 
 pub fn main() !void {
@@ -136,10 +145,20 @@ pub fn main() !void {
     var bw = std.io.bufferedWriter(stdout_file.writer());
     const stdout = bw.writer();
 
-    try color.translate(stdout, "\n&42&30 panda &0 Calculator launched.\n");
+    // hoobuy is a scam btw
+    try color.translate(stdout, "\n&42&30 hoobuy &0 Calculator launched.\n");
     try bw.flush();
 
-    try getUsers(allocator);
+    const tuple = try getUsers(allocator);
+    defer allocator.free(tuple[1]);
+
+    const total_weigth = tuple[0];
+    const users_weigths = tuple[1];
+
+    _ = users_weigths;
+
+    try stdout.print(color.comptimeTranslate("\n&42&30 panda &0 Total hauls weigth is {d}kg.\n"), .{total_weigth});
+    try bw.flush();
 }
 
 test {

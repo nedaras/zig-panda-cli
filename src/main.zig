@@ -100,18 +100,18 @@ fn verifyFloat(input: []const u8) ?[]const u8 {
 fn verifyInteger(input: []const u8) ?[]const u8 {
     // todo: make it more logical like throw error if negatice number
     if (input.len == 0) return "";
-    _ = std.fmt.parseInt(u32, input, 10) catch return "Weight has to be a fixed number!";
+    _ = std.fmt.parseInt(u32, input, 10) catch return "it has to be a fixed number!";
     return null;
 }
 
 // TODO: make make it in grams
-fn getWeight(allocator: std.mem.Allocator, user: u32) !f64 {
+fn getWeight(allocator: std.mem.Allocator, user: u32) !u32 {
     const name = try std.fmt.allocPrint(allocator, "#{d}", .{user});
     defer allocator.free(name);
 
-    const out = try promt(allocator, .{ .name = name, .message = "say da weigth?", .verify = verifyFloat });
+    const out = try promt(allocator, .{ .name = name, .message = "how much weigth is user contributing?", .verify = verifyInteger, .placeholder = "./grams" });
     defer allocator.free(out);
-    return std.fmt.parseFloat(f64, out) catch unreachable;
+    return std.fmt.parseUnsigned(u32, out, 10) catch unreachable;
 }
 
 fn getShippingPrice(allocator: std.mem.Allocator) !f64 {
@@ -120,12 +120,12 @@ fn getShippingPrice(allocator: std.mem.Allocator) !f64 {
     return std.fmt.parseFloat(f64, out) catch unreachable;
 }
 
-fn getUsers(allocator: std.mem.Allocator) !std.meta.Tuple(&.{ f64, []f64 }) {
+fn getUsers(allocator: std.mem.Allocator) !std.meta.Tuple(&.{ u32, []u32 }) {
     const out = try promt(allocator, .{ .name = "users", .message = "How many peaple are contributing?", .verify = verifyInteger });
     defer allocator.free(out);
 
-    const users = try allocator.alloc(f64, std.fmt.parseUnsigned(u32, out, 10) catch unreachable);
-    var total_weigth: f64 = 0;
+    const users = try allocator.alloc(u32, std.fmt.parseUnsigned(u32, out, 10) catch unreachable);
+    var total_weigth: u32 = 0;
 
     for (0..users.len) |user| {
         const weigth = try getWeight(allocator, @intCast(user + 1));
@@ -161,15 +161,15 @@ pub fn main() !void {
     const total_weigth = tuple[0];
     const users_weigths = tuple[1];
 
-    try stdout.print(color.comptimeTranslate("\n&42&30 hoobuy &0  Total hauls weigth is {d:.3}kg.\n"), .{total_weigth});
+    try stdout.print(color.comptimeTranslate("\n&42&30 hoobuy &0  Total hauls weigth is {d:.1}kg.\n"), .{@as(f64, @floatFromInt(total_weigth)) / 1000.0});
     try bw.flush();
 
     const price = try getShippingPrice(allocator);
-    const ratio = price / total_weigth;
+    const ratio = price / @as(f64, @floatFromInt(total_weigth));
 
     try color.translate(stdout, "\n&42&30 hoobuy &0  Done...\n\n");
     for (0.., users_weigths) |i, user| {
-        try stdout.print(color.comptimeTranslate("          &32●&0 User #{d} fee - {d:.2}$.\n"), .{ i, user * ratio });
+        try stdout.print(color.comptimeTranslate("          &32●&0 User #{d} fee - {d:.2}$.\n"), .{ i, @as(f64, @floatFromInt(user)) * ratio });
     }
     try stdout.writeByte('\n');
     try bw.flush();

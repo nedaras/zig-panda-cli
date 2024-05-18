@@ -67,8 +67,7 @@ pub fn main() !void {
     var bw = std.io.bufferedWriter(stdout_file.writer());
     const stdout = bw.writer();
 
-    // hoobuy is a scam btw
-    try color.translate(stdout, "\n&42&30 hoobuy &0  Calculator launched.\n");
+    try color.translate(stdout, "\n&42&30 buybuy &0  Calculator launched.\n");
     try bw.flush();
 
     const tuple = try getUsers(allocator);
@@ -77,13 +76,13 @@ pub fn main() !void {
     const total_weigth = tuple[0];
     const users_weigths = tuple[1];
 
-    try stdout.print(color.comptimeTranslate("\n&42&30 hoobuy &0  Total hauls weigth is {d:.1}kg.\n"), .{@as(f64, @floatFromInt(total_weigth)) / 1000.0});
+    try stdout.print(color.comptimeTranslate("\n&42&30 buybuy &0  Total hauls weigth is {d:.1}kg.\n"), .{@as(f64, @floatFromInt(total_weigth)) / 1000.0});
     try bw.flush();
 
     const price = try getShippingPrice(allocator);
     const ratio = price / @as(f64, @floatFromInt(total_weigth));
 
-    try color.translate(stdout, "\n&42&30 hoobuy &0  Done...\n\n");
+    try color.translate(stdout, "\n&42&30 buybuy &0  Done...\n\n");
     for (0.., users_weigths) |i, user| {
         try stdout.print(color.comptimeTranslate("          &32●&0 User #{d} fee - {d:.2}$.\n"), .{ i, @as(f64, @floatFromInt(user)) * ratio });
     }
